@@ -22,6 +22,7 @@
 - improve upon the product search to automatically match against multiple columns of relevance
 - add filtering capability for things like **brand** and **retailer** and even **price range**
 - make order of product listing consistent for better user experience and sanity
+- has minor formatting errors, but really needs a whole presentation overhaul, as it is pretty ugly as-is
 
 ### Docker / Git
 
