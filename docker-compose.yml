@@ -1,0 +1,72 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: productcatalog-postgres
+    environment:
+      POSTGRES_DB: productcatalog
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: supersecret
+      POSTGRES_HOST_AUTH_METHOD: password
+    ports:
+      - "5432:5432"
+    volumes:
+#      - postgres_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./db/init-data.sql:/docker-entrypoint-initdb.d/02-init-data.sql
+    networks:
+      - productcatalog-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: productcatalog-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/productcatalog
+      SPRING_DATASOURCE_USERNAME: dbuser
+      SPRING_DATASOURCE_PASSWORD: supersecret
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: true
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - productcatalog-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/products/count"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: productcatalog-frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - productcatalog-network
+
+volumes:
+  postgres_data:
+
+networks:
+  productcatalog-network:
+    driver: bridge
